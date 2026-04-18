@@ -1,4 +1,4 @@
-import type { GoldenCase } from '../lib/types.js';
+import type { GoldenCase, QuestionNote, ScoringOutput } from '../lib/types.js';
 
 export function makeCase(overrides: Partial<GoldenCase> = {}): GoldenCase {
   return {
@@ -17,18 +17,42 @@ export function makeCase(overrides: Partial<GoldenCase> = {}): GoldenCase {
 
 export const baseCase: GoldenCase = makeCase();
 
-interface ScoringOutputParts {
-  score?: number;
-  feedback?: string;
-  strengths?: string[];
-  improvements?: string[];
+export type ScoringOutputParts = Partial<ScoringOutput>;
+
+export function uniformDimScores(n: number): Pick<
+  ScoringOutput,
+  'technical_score' | 'communication_score' | 'examples_score' | 'depth_score'
+> {
+  return {
+    technical_score: n,
+    communication_score: n,
+    examples_score: n,
+    depth_score: n,
+  };
 }
 
+const DEFAULT_QUESTION_NOTES: QuestionNote[] = [
+  {
+    score: 50,
+    note: 'Answer covered the basics but skipped edge cases.',
+    ideal: 'A strong answer would walk through positive, negative, and boundary cases.',
+  },
+];
+
 export function makeScoringOutput(parts: ScoringOutputParts = {}): string {
-  return JSON.stringify({
-    score: parts.score ?? 50,
-    feedback: parts.feedback ?? '',
-    strengths: parts.strengths ?? [],
-    improvements: parts.improvements ?? [],
-  });
+  const payload: ScoringOutput = {
+    technical_score: parts.technical_score ?? 50,
+    communication_score: parts.communication_score ?? 50,
+    examples_score: parts.examples_score ?? 50,
+    depth_score: parts.depth_score ?? 50,
+    technical_feedback: parts.technical_feedback ?? '',
+    communication_feedback: parts.communication_feedback ?? '',
+    examples_feedback: parts.examples_feedback ?? '',
+    depth_feedback: parts.depth_feedback ?? '',
+    summary: parts.summary ?? '',
+    top_strength: parts.top_strength ?? '',
+    main_improvement: parts.main_improvement ?? '',
+    question_notes: parts.question_notes ?? DEFAULT_QUESTION_NOTES,
+  };
+  return JSON.stringify(payload);
 }

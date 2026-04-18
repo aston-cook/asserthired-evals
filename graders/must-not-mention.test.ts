@@ -8,36 +8,55 @@ const caseWithForbidden = makeCase({
 
 describe('must-not-mention', () => {
   it('passes when no forbidden terms appear', async () => {
-    const output = makeScoringOutput({ feedback: 'Reasonable coverage of test design techniques.' });
+    const output = makeScoringOutput({
+      technical_feedback: 'Reasonable coverage of test design techniques.',
+    });
     const result = await mustNotMention({ output, test: { vars: caseWithForbidden } });
     expect(result.pass).toBe(true);
     expect(result.score).toBe(1);
   });
 
-  it('fails when a forbidden term appears in feedback', async () => {
-    const output = makeScoringOutput({ feedback: 'This is a strong response overall.' });
+  it('fails when a forbidden term appears in technical_feedback', async () => {
+    const output = makeScoringOutput({
+      technical_feedback: 'This is a strong response overall.',
+    });
     const result = await mustNotMention({ output, test: { vars: caseWithForbidden } });
     expect(result.pass).toBe(false);
     expect(result.reason).toContain('strong response');
   });
 
-  it('fails when a forbidden term appears in strengths or improvements', async () => {
+  it('fails when a forbidden term appears in summary or main_improvement', async () => {
     const output = makeScoringOutput({
-      improvements: ['Unit testing the backend database would help.'],
+      main_improvement: 'Unit testing the backend database would help.',
     });
     const result = await mustNotMention({ output, test: { vars: caseWithForbidden } });
     expect(result.pass).toBe(false);
   });
 
+  it('fails when a forbidden term appears in a question_notes.ideal', async () => {
+    const output = makeScoringOutput({
+      question_notes: [
+        {
+          score: 50,
+          note: 'Partial.',
+          ideal: 'A strong response would include detailed walkthroughs.',
+        },
+      ],
+    });
+    const result = await mustNotMention({ output, test: { vars: caseWithForbidden } });
+    expect(result.pass).toBe(false);
+    expect(result.reason).toContain('strong response');
+  });
+
   it('is case-insensitive', async () => {
-    const output = makeScoringOutput({ feedback: 'Overall a STRONG RESPONSE.' });
+    const output = makeScoringOutput({ summary: 'Overall a STRONG RESPONSE.' });
     const result = await mustNotMention({ output, test: { vars: caseWithForbidden } });
     expect(result.pass).toBe(false);
   });
 
   it('documented substring behavior: forbidden term matches even when negated in context', async () => {
     const output = makeScoringOutput({
-      feedback: 'A strong response was not demonstrated here.',
+      technical_feedback: 'A strong response was not demonstrated here.',
     });
     const result = await mustNotMention({ output, test: { vars: caseWithForbidden } });
     expect(result.pass).toBe(false);
@@ -46,7 +65,7 @@ describe('must-not-mention', () => {
   it('passes when no forbidden terms are defined', async () => {
     const empty = makeCase({ mustNotMention: [] });
     const result = await mustNotMention({
-      output: makeScoringOutput({ feedback: 'anything' }),
+      output: makeScoringOutput({ summary: 'anything' }),
       test: { vars: empty },
     });
     expect(result.pass).toBe(true);
@@ -59,7 +78,8 @@ describe('must-not-mention', () => {
   });
 
   it('handles JSON wrapped in a code fence', async () => {
-    const fenced = '```json\n' + makeScoringOutput({ feedback: 'clean feedback' }) + '\n```';
+    const fenced =
+      '```json\n' + makeScoringOutput({ summary: 'clean feedback' }) + '\n```';
     const result = await mustNotMention({ output: fenced, test: { vars: caseWithForbidden } });
     expect(result.pass).toBe(true);
   });

@@ -1,18 +1,7 @@
 import { extractJson } from '../lib/json.js';
 import { mentions } from '../lib/mention.js';
+import { buildLabeledCorpus, flatCorpus } from '../lib/scoring-text.js';
 import type { GraderInput, GraderResult } from '../lib/types.js';
-
-function buildHaystack(parsed: {
-  feedback?: unknown;
-  strengths?: unknown;
-  improvements?: unknown;
-}): string {
-  return [
-    typeof parsed.feedback === 'string' ? parsed.feedback : '',
-    Array.isArray(parsed.strengths) ? parsed.strengths.join(' ') : '',
-    Array.isArray(parsed.improvements) ? parsed.improvements.join(' ') : '',
-  ].join(' ');
-}
 
 export default async function mustNotMention({
   output,
@@ -28,7 +17,7 @@ export default async function mustNotMention({
     return { pass: false, score: 0, reason: 'Malformed output: not valid JSON' };
   }
 
-  const haystack = buildHaystack(parsed as Record<string, unknown>);
+  const haystack = flatCorpus(buildLabeledCorpus(parsed as Record<string, unknown>));
   const violations = terms.filter((t) => mentions(haystack, t));
   const pass = violations.length === 0;
 

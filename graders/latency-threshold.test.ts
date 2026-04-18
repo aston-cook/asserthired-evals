@@ -3,7 +3,7 @@ import latencyThreshold from './latency-threshold.js';
 import { baseCase, makeScoringOutput } from '../tests/fixtures.js';
 
 const baseInput = {
-  output: makeScoringOutput({ score: 50 }),
+  output: makeScoringOutput(),
   test: { vars: baseCase },
 };
 

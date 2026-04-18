@@ -20,14 +20,42 @@ export const GoldenCaseSchema = z
 
 export type GoldenCase = z.infer<typeof GoldenCaseSchema>;
 
-export const ScoringOutputSchema = z.object({
+export const QuestionNoteSchema = z.object({
   score: z.number(),
-  feedback: z.string(),
-  strengths: z.array(z.string()),
-  improvements: z.array(z.string()),
+  note: z.string(),
+  ideal: z.string(),
+});
+
+export type QuestionNote = z.infer<typeof QuestionNoteSchema>;
+
+export const ScoringOutputSchema = z.object({
+  technical_score: z.number(),
+  communication_score: z.number(),
+  examples_score: z.number(),
+  depth_score: z.number(),
+  technical_feedback: z.string(),
+  communication_feedback: z.string(),
+  examples_feedback: z.string(),
+  depth_feedback: z.string(),
+  summary: z.string(),
+  top_strength: z.string(),
+  main_improvement: z.string(),
+  question_notes: z.array(QuestionNoteSchema),
 });
 
 export type ScoringOutput = z.infer<typeof ScoringOutputSchema>;
+
+export function computeOverallScore(dimensions: {
+  technical_score: number;
+  communication_score: number;
+  examples_score: number;
+  depth_score: number;
+}): number {
+  const { technical_score, communication_score, examples_score, depth_score } = dimensions;
+  return Math.round(
+    (technical_score + communication_score + examples_score + depth_score) / 4,
+  );
+}
 
 export interface GraderResult {
   pass: boolean;
@@ -60,6 +88,7 @@ export interface JudgeViolation {
   category?: SafetyCategory;
   severity?: Severity;
   excerpt?: string;
+  field?: string;
 }
 
 export interface JudgeVerdict {
