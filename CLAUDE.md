@@ -6,5 +6,6 @@ Non-negotiable rules:
 - The golden dataset is fully synthetic. Never import, derive, or fabricate from real AssertHired data.
 - Work in small, reviewable chunks. Present a plan and wait for confirmation before scaffolding folders, generating dataset content, or adding dependencies.
 - No em dashes in any docs or comments.
+- Never run any command that makes real Anthropic API calls without explicit per-command approval. This includes pnpm eval, direct promptfoo runs, or any test or script that instantiates a non-mocked Claude client. When in doubt, stop and ask. Unit tests with mocked clients are fine to run freely.
 
 Tech stack: Node 20+, pnpm, TypeScript, Promptfoo, Vitest, GitHub Actions.
