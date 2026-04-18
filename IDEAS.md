@@ -38,3 +38,19 @@ Worth watching once real runs start. Options if cost becomes a concern:
 - Move few-shot examples to cached system prompts (prompt caching)
 - Trim examples to the sharpest one or two
 - Switch the judge to Haiku for safety (simpler rubric) and keep Sonnet only for faithfulness
+
+## v1 tradeoffs worth revisiting
+
+Deliberate simplifications locked in for v1. Each one trades something real; revisit after the first live eval run.
+
+### Faithfulness single-pass corpus
+
+The faithfulness grader sends all four dim feedback fields plus summary, top_strength, main_improvement, and question_notes as one labeled corpus in a single judge call. Cheaper by 4x vs per-dim calls, and claims in `summary` often reference content that lives in another dim, so single-corpus avoids false positives from over-isolation. Cost: the judge may be less precise about which dim a hallucination originated in. Revisit after the first real run if we see attribution mistakes that would have been caught by dim-localized judging.
+
+### overall_score is a plain rounded average
+
+The grader computes `overall = round((technical + communication + examples + depth) / 4)` for the score-in-range check. If production ever moves to weighted dims (e.g., technical-heavier for senior roles), the eval formula must track that change or expectedScoreRange assertions will silently drift from reality.
+
+### question_notes.ideal inside must-mention corpus
+
+must-mention and must-not-mention treat `question_notes[].ideal` as part of the searchable corpus alongside `.note`. `ideal` is model-generated, so a term hit there reflects "model surfaced the concept somewhere in the feedback" rather than "model tied the concept to the candidate specifically". Acceptable noise for v1 since our must-mention terms are domain concepts the candidate should be steered toward either way. Revisit if false positives appear in real runs.
