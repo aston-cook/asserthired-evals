@@ -1,0 +1,18 @@
+{
+  "name": "asserthired-evals",
+  "version": "0.0.0",
+  "private": true,
+  "description": "LLM evaluation suite for interview-scoring applications. Reference implementation.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "eval": "echo \"eval runner not implemented yet\" && exit 1",
+    "eval:summarize": "echo \"summarize-run not implemented yet\" && exit 1",
+    "eval:compare": "echo \"compare-runs not implemented yet\" && exit 1",
+    "test": "echo \"vitest not wired up yet\" && exit 1",
+    "typecheck": "echo \"typescript not installed yet\" && exit 1"
+  }
+}
