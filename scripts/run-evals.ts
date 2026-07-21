@@ -34,6 +34,7 @@ interface CliOptions {
   consistency: boolean;
   first?: number;
   config?: string;
+  outDir?: string;
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -46,6 +47,7 @@ function parseArgs(argv: string[]): CliOptions {
     else if (arg === '--consistency') options.consistency = true;
     else if (arg === '--first' && argv[i + 1]) options.first = Number(argv[++i]);
     else if (arg === '--config' && argv[i + 1]) options.config = argv[++i] as string;
+    else if (arg === '--out-dir' && argv[i + 1]) options.outDir = argv[++i] as string;
   }
   return options;
 }
@@ -214,7 +216,9 @@ async function main(): Promise<void> {
   }
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const outDir = 'reports';
+  // Smoke runs land in their own directory so the trend, drift, and review
+  // tooling over reports/ only ever sees live-run summaries.
+  const outDir = options.outDir ?? (options.smoke ? 'reports/smoke' : 'reports');
   mkdirSync(outDir, { recursive: true });
 
   const configPath =

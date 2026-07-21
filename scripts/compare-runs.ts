@@ -1,10 +1,10 @@
 // Trend view over past eval runs (Section 10.2). Reads the *-summary.json files
 // the summarizer leaves in reports/ and renders a markdown trend table.
 
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { renderTrendTable } from '../lib/report.js';
-import type { RunSummary } from '../lib/report.js';
+import { loadSummaries } from '../lib/run-summaries.js';
 
 const DEFAULT_LAST_N = 10;
 
@@ -27,21 +27,7 @@ function main(): void {
     return;
   }
 
-  const summaryFiles = readdirSync(outDir)
-    .filter((f) => f.endsWith('-summary.json'))
-    .sort();
-
-  const summaries: RunSummary[] = [];
-  for (const file of summaryFiles.slice(-lastN)) {
-    try {
-      summaries.push(
-        JSON.parse(readFileSync(join(outDir, file), 'utf8')) as RunSummary,
-      );
-    } catch (err) {
-      console.warn(`Skipping unreadable summary ${file}: ${(err as Error).message}`);
-    }
-  }
-
+  const summaries = loadSummaries(outDir).slice(-lastN);
   const table = renderTrendTable(summaries);
   console.log(table);
 
