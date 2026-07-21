@@ -125,18 +125,18 @@ describe('claude-client', () => {
   });
 
   it('uses ANTHROPIC_JUDGE_MODEL when set', async () => {
-    process.env['ANTHROPIC_JUDGE_MODEL'] = 'claude-haiku-4-5';
-    mockCreate.mockResolvedValue(okResponse());
-    await judge({ system: 's', user: 'u' });
-    const payload = mockCreate.mock.calls[0]?.[0];
-    expect(payload).toMatchObject({ model: 'claude-haiku-4-5' });
-  });
-
-  it('defaults to claude-sonnet-4-5 when no env override', async () => {
+    process.env['ANTHROPIC_JUDGE_MODEL'] = 'claude-sonnet-4-5';
     mockCreate.mockResolvedValue(okResponse());
     await judge({ system: 's', user: 'u' });
     const payload = mockCreate.mock.calls[0]?.[0];
     expect(payload).toMatchObject({ model: 'claude-sonnet-4-5' });
+  });
+
+  it('defaults to claude-haiku-4-5 when no env override (cost default)', async () => {
+    mockCreate.mockResolvedValue(okResponse());
+    await judge({ system: 's', user: 'u' });
+    const payload = mockCreate.mock.calls[0]?.[0];
+    expect(payload).toMatchObject({ model: 'claude-haiku-4-5' });
   });
 
   it('explicit model parameter overrides env var', async () => {

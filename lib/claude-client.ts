@@ -16,8 +16,11 @@ function getClient(): Anthropic {
   return cachedClient;
 }
 
+// Haiku keeps judge costs low (roughly 3x cheaper on input, 3x on output than
+// Sonnet). The initial baseline runs on 2026-07-21 used claude-sonnet-4-5 as
+// the judge; set ANTHROPIC_JUDGE_MODEL=claude-sonnet-4-5 to reproduce them.
 function defaultModel(): string {
-  return process.env['ANTHROPIC_JUDGE_MODEL'] ?? 'claude-sonnet-4-5';
+  return process.env['ANTHROPIC_JUDGE_MODEL'] ?? 'claude-haiku-4-5';
 }
 
 function isRetryable(err: unknown): boolean {
@@ -38,6 +41,7 @@ export interface JudgeCallInput {
   user: string;
   model?: string;
   maxTokens?: number;
+  temperature?: number;
 }
 
 export interface JudgeCallOutput {
@@ -50,6 +54,7 @@ export async function judge({
   user,
   model,
   maxTokens = 1024,
+  temperature,
 }: JudgeCallInput): Promise<JudgeCallOutput> {
   const client = getClient();
   const selectedModel = model ?? defaultModel();
@@ -64,6 +69,7 @@ export async function judge({
           max_tokens: maxTokens,
           system,
           messages: [{ role: 'user', content: user }],
+          ...(temperature !== undefined ? { temperature } : {}),
         },
         { timeout: TIMEOUT_MS },
       );
