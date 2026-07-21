@@ -20,6 +20,14 @@ it('gives up after retries', async () => {
 
 Reuse candidates: runner scripts that poll with backoff, any future retry wrappers, compare-runs diffing logic if it becomes async.
 
+### Promptfoo cartesian-expands array-valued vars
+
+Passing a golden case directly as promptfoo test vars silently exploded 65 tests into 273: promptfoo treats any array-valued var (mustMention, expectedScoreRange) as a matrix axis and generates the cartesian product, handing each grader a scalar fragment instead of the array. The fix that stuck: serialize the full case into a single `caseJson` string var and decode it in the adapter (`decodeCaseVars`), exposing only scalar convenience vars (id, category, question) directly. Any structured object riding through promptfoo vars should travel as a JSON string.
+
+### Windows: promptfoo's logger can crash after output is written
+
+On Windows, promptfoo's winston file transport intermittently throws "write after end" during process teardown, after the eval completed and the output JSON was fully written. The runner treats any exit code as acceptable when the output file exists and parses, and only fails when the output is missing. Generalizes to any CLI orchestration: gate on the artifact, not the exit code, when the tool is known to die during cleanup.
+
 ## Cost watch
 
 ### Judge rubric token budget
@@ -38,6 +46,44 @@ Worth watching once real runs start. Options if cost becomes a concern:
 - Move few-shot examples to cached system prompts (prompt caching)
 - Trim examples to the sharpest one or two
 - Switch the judge to Haiku for safety (simpler rubric) and keep Sonnet only for faithfulness
+
+Update 2026-07-21: cost became a concern on day one. Three full runs measured about $6.50 total with a Sonnet judge. Responses: judge default switched to claude-haiku-4-5 (baselines used Sonnet via ANTHROPIC_JUDGE_MODEL), consistency sampler made opt-in (measured stddev 0.09 to 0.31 against a budget of 8, so it earns its 50 calls rarely), and the CI eval job is manual-dispatch-only with a typed YES confirmation. Remaining lever if needed: prompt caching on the judge system prompts.
+
+## Golden dataset authoring rules
+
+Patterns established while authoring the seed cases. Apply to every new case.
+
+### 1. Prefer multi-word phrases in mustMention and mustNotMention
+
+Single-word terms like "negative", "boundary", "edge" risk cross-contamination and false positives in mention graders, since they appear incidentally in unrelated QA feedback phrasing. Use "negative cases", "boundary value", "edge scenario" instead. If a single word is unavoidable, note the tradeoff in the case's `notes` field.
+
+### 2. mustNotMention targets fabricated attribution
+
+The primary hallucination pattern to catch is the scoring model inventing claims about what the candidate said: "use of Cypress" when no tool was named, "applied equivalence partitioning" when the candidate gave only a vague happy-path answer, "your reference to TDD" when TDD was never raised. Past-tense verbs ("applied", "used", "demonstrated") are especially sharp signals because they attribute action. Unrelated-technique traps ("pairwise testing" on an answer that didn't use it) are acceptable as a secondary type, but fabricated attribution is the main target.
+
+### 3. Widen expectedScoreRange before upgrading difficulty
+
+When an answer is very strong for its declared difficulty tier, widen the range rather than upgrading to the next tier. Upgrading changes what the scoring prompt calibrates against; a strong-mid answer at senior difficulty often loses points for missing tier-specific framing (risk, strategy, observability) and ends up in a lower band than it deserves. Widening absorbs grader variance while keeping the tier label honest.
+
+### 4. Cover strong, weak, and off-topic structural roles early
+
+Distribute strong, weak, and off-topic cases early in the dataset to stress mention graders in all three structural roles. Strong cases test "concept demonstrated, feedback praises it" patterns. Weak cases test "concept absent, feedback surfaces as growth area" patterns. Off-topic cases test grader behavior when the answer doesn't engage the question at all (where generous graders tend to hallucinate praise or invent attribution). Early coverage across all three roles catches grader issues before they compound across 60 cases.
+
+### 5. Past-tense attribution traps carry a false-positive risk
+
+Traps like "applied X" or "used Y" catch fabricated attribution cleanly, but substring matching can't distinguish grounded growth-area comments in the same tense ("has not applied X", "never used Y"). Acceptable risk for v1 since the false-positive rate should be low for well-calibrated feedback. Watch for flaps in the first real eval run and consider tightening to specific attribution patterns ("your use of X", "your application of X") if the trap misfires.
+
+### 6. Prefer "your"-prefixed attribution traps over tense-based traps
+
+"Your approach to X", "your use of Y", "your reference to Z" unambiguously claim the candidate addressed the topic, which is the exact hallucination pattern worth catching. They also avoid the tense false-positive risk from rule 5, since grounded growth-area comments typically don't use "your" to attribute. Use these as the default form for attribution traps; fall back to tense-based only when no "your"-phrase reads naturally.
+
+### 7. Off-topic cases leave mustMention empty
+
+Growth-area terminology is unpredictable when the answer doesn't engage the question. Requiring specific terms makes the test brittle and punishes grader phrasing variance rather than grader correctness. The real signal for off-topic is mustNotMention catching generous praise or fabricated attribution.
+
+### 8. Author at least one weak-with-confidence case per category
+
+Confident-but-wrong answers stress a materially different grader path than under-informed weak answers: score-in-range tests whether the grader over-rewards vocabulary match, faithfulness tests whether the judge catches ungrounded praise, and mustMention tests the "concept named but misapplied" structural role. This pattern is the single highest-signal way to evaluate whether a scoring prompt does technical accuracy checking or just fluency matching, so every category's dataset should include at least one.
 
 ## v1 tradeoffs worth revisiting
 
