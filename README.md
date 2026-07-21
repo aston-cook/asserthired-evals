@@ -152,6 +152,10 @@ Still on the roadmap:
 - Multi-model comparison (Haiku vs Sonnet vs Opus) to quantify the cost-quality frontier for this workload. This is the one remaining item that only pays off with paid runs across several models, so it waits until a comparison run is worth the spend.
 - Prompt caching on the judge system prompts, the last untapped cost lever (see [IDEAS.md](IDEAS.md)).
 
+## Changelog
+
+Recent work is called out in [CHANGELOG.md](CHANGELOG.md). The red-team suite, drift detection, review queue, and judge calibration landed in 1.1.0.
+
 ## Credits
 
 Built with [Promptfoo](https://promptfoo.dev), [Anthropic Claude](https://www.anthropic.com), Vitest, and zod. Dataset authoring rules and v1 tradeoffs are documented in [IDEAS.md](IDEAS.md). Licensed under [MIT](LICENSE).

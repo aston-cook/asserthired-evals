@@ -1,6 +1,6 @@
 {
   "name": "asserthired-evals",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "LLM evaluation suite for interview-scoring applications. Reference implementation.",
   "type": "module",
