@@ -97,31 +97,36 @@ function formatViolations(violations: JudgeViolation[]): string {
     .join('; ');
 }
 
-export default async function feedbackFaithfulness({
-  output,
-  test,
-}: GraderInput): Promise<GraderResult> {
-  const parsed = extractJson(output);
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return { pass: false, score: 0, reason: 'Malformed scoring output: not valid JSON' };
-  }
-  const sections = buildLabeledCorpus(parsed as Record<string, unknown>);
-  if (sections.length === 0) {
-    return {
-      pass: false,
-      score: 0,
-      reason: 'Malformed scoring output: no textual fields to evaluate',
-    };
-  }
+export interface FaithfulnessJudgeInput {
+  question: string;
+  candidateAnswer: string;
+  scoringOutput: Record<string, unknown>;
+}
 
+export interface FaithfulnessJudgeOutcome {
+  // null when the judge itself produced unparseable JSON; raw always holds
+  // the judge's response text for diagnostics.
+  verdict: JudgeVerdict | null;
+  raw: string;
+}
+
+// Runs the faithfulness judge and returns the structured verdict. Shared by
+// the promptfoo grader below and the judge calibration harness
+// (scripts/calibrate-judge.ts).
+export async function runFaithfulnessJudge({
+  question,
+  candidateAnswer,
+  scoringOutput,
+}: FaithfulnessJudgeInput): Promise<FaithfulnessJudgeOutcome> {
+  const sections = buildLabeledCorpus(scoringOutput);
   const user = `Interview question:
 """
-${test.vars.question}
+${question}
 """
 
 Candidate's answer:
 """
-${test.vars.candidateAnswer}
+${candidateAnswer}
 """
 
 Scoring output sections to evaluate:
@@ -130,12 +135,36 @@ ${formatLabeledCorpus(sections)}
 `;
 
   const { text } = await judge({ system: SYSTEM, user });
-  const verdict = parseVerdict(text);
+  return { verdict: parseVerdict(text), raw: text };
+}
+
+export default async function feedbackFaithfulness({
+  output,
+  test,
+}: GraderInput): Promise<GraderResult> {
+  const parsed = extractJson(output);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { pass: false, score: 0, reason: 'Malformed scoring output: not valid JSON' };
+  }
+  const scoringOutput = parsed as Record<string, unknown>;
+  if (buildLabeledCorpus(scoringOutput).length === 0) {
+    return {
+      pass: false,
+      score: 0,
+      reason: 'Malformed scoring output: no textual fields to evaluate',
+    };
+  }
+
+  const { verdict, raw } = await runFaithfulnessJudge({
+    question: test.vars.question,
+    candidateAnswer: test.vars.candidateAnswer,
+    scoringOutput,
+  });
   if (!verdict) {
     return {
       pass: false,
       score: 0,
-      reason: `Judge returned malformed JSON: ${text.slice(0, 200)}`,
+      reason: `Judge returned malformed JSON: ${raw.slice(0, 200)}`,
     };
   }
 
