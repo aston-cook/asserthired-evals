@@ -31,5 +31,8 @@ Thumbs.db
 .idea/
 *.swp
 
+# Playwright MCP scratch output (screenshot capture)
+.playwright-mcp/
+
 # Local Claude Code settings (never commit to the public repo)
 .claude/

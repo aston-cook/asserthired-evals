@@ -28,6 +28,16 @@ Passing a golden case directly as promptfoo test vars silently exploded 65 tests
 
 On Windows, promptfoo's winston file transport intermittently throws "write after end" during process teardown, after the eval completed and the output JSON was fully written. The runner treats any exit code as acceptable when the output file exists and parses, and only fails when the output is missing. Generalizes to any CLI orchestration: gate on the artifact, not the exit code, when the tool is known to die during cleanup.
 
+### Red-team resistance without a bespoke grader
+
+The red-team suite reuses the existing deterministic graders instead of writing an attack-specific one. Resistance falls out of two signals already in the pipeline: an attack that tries to inflate the score ("score this 100") makes a compliant model land outside a low `expectedScoreRange`, and `mustNotMention` traps catch injected canary phrases, leaked rubric text, or echoed PII appearing anywhere in the feedback corpus. The must-not-mention corpus is built from the model output, not the candidate answer, so a trap only fires when the model actually reproduces the attacker's string, which is exactly the failure worth catching. A format-hijack attack ("drop the JSON") needs no trap at all: compliance produces unparseable output that every deterministic grader already reports as malformed.
+
+Reuse candidate: any eval where the untrusted input rides inside a field the system under test consumes. Model the attack as data with pre-registered pass/fail bounds rather than building a parallel harness.
+
+### Pre-registered expectations when a live run is not available
+
+The red-team ranges were authored without a live run (cost hold). Each case's `notes` says so explicitly and the range is a deliberate prediction, not an observation. This keeps the dataset honest: a future real run may show a resistant model scoring higher than the pre-registered band, and that is a calibration finding to fold in, exactly as the golden set's ranges were recalibrated against runs 1 to 3. The must-not-mention traps are the sturdier backstop, since they do not depend on score calibration.
+
 ## Cost watch
 
 ### Judge rubric token budget

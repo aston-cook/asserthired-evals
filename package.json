@@ -8,11 +8,17 @@
     "node": ">=20"
   },
   "packageManager": "pnpm@9.0.0",
+  "license": "MIT",
   "scripts": {
     "eval": "tsx scripts/run-evals.ts",
     "eval:smoke": "tsx scripts/run-evals.ts --smoke",
+    "eval:redteam": "tsx scripts/run-evals.ts --config promptfooconfig.redteam.yaml --out-dir reports/redteam",
+    "eval:redteam:smoke": "tsx scripts/run-evals.ts --smoke --config promptfooconfig.redteam.mock.yaml",
     "eval:summarize": "tsx scripts/summarize-run.ts",
     "eval:compare": "tsx scripts/compare-runs.ts",
+    "eval:drift": "tsx scripts/detect-drift.ts",
+    "review:queue": "tsx scripts/flag-for-review.ts",
+    "calibrate:judge": "tsx scripts/calibrate-judge.ts",
     "validate:dataset": "tsx scripts/validate-dataset.ts",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -36,6 +36,7 @@ jobs:
       - run: pnpm test
       - run: pnpm validate:dataset
       - run: pnpm eval:smoke
+      - run: pnpm eval:redteam:smoke
 
   eval:
     name: Full eval against the Anthropic API (manual only, costs money)
