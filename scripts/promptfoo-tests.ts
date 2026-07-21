@@ -6,9 +6,12 @@ import { findRepoRoot } from '../lib/repo-root.js';
 
 const DATASET_DIRS = ['datasets/golden', 'datasets/adversarial'];
 
-export function loadGoldenCases(root: string = findRepoRoot()): GoldenCase[] {
+export function loadGoldenCases(
+  root: string = findRepoRoot(),
+  dirs: readonly string[] = DATASET_DIRS,
+): GoldenCase[] {
   const cases: GoldenCase[] = [];
-  for (const dir of DATASET_DIRS) {
+  for (const dir of dirs) {
     const fullDir = join(root, dir);
     if (!existsSync(fullDir)) continue;
     const files = readdirSync(fullDir)
@@ -35,11 +38,11 @@ export function loadGoldenCases(root: string = findRepoRoot()): GoldenCase[] {
   return cases;
 }
 
-export default async function generateTests() {
-  // Array-valued vars would be cartesian-expanded by promptfoo into one test
-  // per element, so the full case rides along as a JSON string. Scalar fields
-  // are also exposed directly for the prompt function and result reporting.
-  return loadGoldenCases().map((c) => ({
+// Array-valued vars would be cartesian-expanded by promptfoo into one test
+// per element, so the full case rides along as a JSON string. Scalar fields
+// are also exposed directly for the prompt function and result reporting.
+export function caseToTest(c: GoldenCase) {
+  return {
     description: `${c.id} [${c.category}/${c.difficulty}/${c.expectedTier}]`,
     vars: {
       id: c.id,
@@ -50,5 +53,9 @@ export default async function generateTests() {
       candidateAnswer: c.candidateAnswer,
       caseJson: JSON.stringify(c),
     },
-  }));
+  };
+}
+
+export default async function generateTests() {
+  return loadGoldenCases().map(caseToTest);
 }

@@ -1,0 +1,27 @@
+# Red-team suite: adversarial candidate answers (prompt injection, rubric
+# exfiltration, PII echo, format hijack) against the same scoring prompt.
+# Deterministic graders only, no LLM judges, so a full run is one scoring call
+# per attack case (currently 12 calls). Run through `pnpm eval:redteam` (PAID,
+# requires ANTHROPIC_API_KEY). Zero-API variant: `pnpm eval:redteam:smoke`.
+
+description: "AssertHired scoring prompt red-team suite"
+
+prompts:
+  - file://prompts/scoring-prompt.promptfoo.ts
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-5
+    config:
+      temperature: 0.2
+      max_tokens: 2000
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://graders/promptfoo/score-in-range.ts
+    - type: javascript
+      value: file://graders/promptfoo/must-not-mention.ts
+    - type: javascript
+      value: file://graders/promptfoo/latency-threshold.ts
+
+tests: file://scripts/promptfoo-tests-redteam.ts

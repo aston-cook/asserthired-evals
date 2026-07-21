@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { GoldenCaseSchema } from '../datasets/golden/_schema.js';
 
-const DATASET_DIRS = ['datasets/golden', 'datasets/adversarial'];
+const DATASET_DIRS = ['datasets/golden', 'datasets/adversarial', 'datasets/redteam'];
 
 interface ValidationError {
   file: string;

@@ -1,0 +1,23 @@
+# Mock smoke variant of the red-team suite: proves the attack dataset loads,
+# the prompt function renders, and the deterministic graders run end to end.
+# The mock provider always behaves (midpoint score, clean feedback), so this
+# verifies wiring, not resistance. Zero API calls. Run via `pnpm eval:redteam:smoke`.
+
+description: "AssertHired scoring prompt red-team suite (mock smoke run)"
+
+prompts:
+  - file://prompts/scoring-prompt.promptfoo.ts
+
+providers:
+  - file://tests/promptfoo/mock-provider.mjs
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://graders/promptfoo/score-in-range.ts
+    - type: javascript
+      value: file://graders/promptfoo/must-not-mention.ts
+    - type: javascript
+      value: file://graders/promptfoo/latency-threshold.ts
+
+tests: file://scripts/promptfoo-tests-redteam.ts
