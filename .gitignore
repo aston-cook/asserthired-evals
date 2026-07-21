@@ -30,3 +30,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Local Claude Code settings (never commit to the public repo)
+.claude/

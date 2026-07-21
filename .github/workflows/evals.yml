@@ -1,0 +1,74 @@
+name: evals
+
+# COST GUARD: the "eval" job below calls the Anthropic API and costs real
+# money (~200 calls per run). It runs ONLY when triggered manually via
+# workflow_dispatch (Actions tab -> evals -> Run workflow). There is no cron,
+# no push trigger, and no PR trigger for it. The "unit" job is free: it uses
+# mocked clients and the local mock provider, and makes zero API calls.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_full_eval:
+        description: "Type YES to run the paid eval against the Anthropic API"
+        required: true
+        default: "NO"
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit tests and smoke run (no API calls)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm validate:dataset
+      - run: pnpm eval:smoke
+
+  eval:
+    name: Full eval against the Anthropic API (manual only, costs money)
+    needs: unit
+    # Double gate: manual trigger AND explicit YES confirmation.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_full_eval == 'YES'
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run eval suite
+        run: pnpm eval
+
+      - name: Publish report to job summary
+        if: always()
+        run: |
+          report=$(ls reports/*.md 2>/dev/null | grep -v trend | sort | tail -1 || true)
+          if [ -n "$report" ]; then
+            cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload reports artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-reports
+          path: reports/
+          if-no-files-found: ignore
