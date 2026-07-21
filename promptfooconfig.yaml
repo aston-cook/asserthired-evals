@@ -1,0 +1,32 @@
+# AssertHired interview scoring eval suite v1.
+# System under test: the sanitized scoring prompt snapshot against the Anthropic API.
+# Run through `pnpm eval` (scripts/run-evals.ts), which also runs the consistency
+# sampler and the report generator. Requires ANTHROPIC_API_KEY.
+
+description: "AssertHired interview scoring eval suite v1"
+
+prompts:
+  - file://prompts/scoring-prompt.promptfoo.ts
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-5
+    config:
+      temperature: 0.2
+      max_tokens: 2000
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://graders/promptfoo/score-in-range.ts
+    - type: javascript
+      value: file://graders/promptfoo/must-mention.ts
+    - type: javascript
+      value: file://graders/promptfoo/must-not-mention.ts
+    - type: javascript
+      value: file://graders/promptfoo/latency-threshold.ts
+    - type: javascript
+      value: file://graders/promptfoo/feedback-faithfulness.ts
+    - type: javascript
+      value: file://graders/promptfoo/safety.ts
+
+tests: file://scripts/promptfoo-tests.ts

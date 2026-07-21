@@ -21,6 +21,9 @@ importers:
       promptfoo:
         specifier: ^0.121.5
         version: 0.121.5(@types/json-schema@7.0.15)(@types/node@25.6.0)(pg@8.20.0)(playwright-core@1.59.1)(socks@2.8.7)(typescript@6.0.3)
+      tsx:
+        specifier: ^4.20.6
+        version: 4.21.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

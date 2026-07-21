@@ -1,0 +1,26 @@
+# Mock smoke config: exercises the full promptfoo pipeline (test loading, prompt
+# function, deterministic graders, report output) with a canned local provider.
+# Makes zero API calls. The two LLM-judged graders (feedback-faithfulness, safety)
+# are intentionally excluded because they call the real Anthropic API.
+# Run through `pnpm eval:smoke`.
+
+description: "AssertHired interview scoring eval suite v1 (mock smoke run)"
+
+prompts:
+  - file://prompts/scoring-prompt.promptfoo.ts
+
+providers:
+  - file://tests/promptfoo/mock-provider.mjs
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://graders/promptfoo/score-in-range.ts
+    - type: javascript
+      value: file://graders/promptfoo/must-mention.ts
+    - type: javascript
+      value: file://graders/promptfoo/must-not-mention.ts
+    - type: javascript
+      value: file://graders/promptfoo/latency-threshold.ts
+
+tests: file://scripts/promptfoo-tests.ts

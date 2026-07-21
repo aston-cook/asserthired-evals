@@ -17,6 +17,21 @@ export function makeCase(overrides: Partial<GoldenCase> = {}): GoldenCase {
 
 export const baseCase: GoldenCase = makeCase();
 
+// Mirrors the vars encoding produced by scripts/promptfoo-tests.ts: scalar
+// fields plus the full case as a JSON string (promptfoo would cartesian-expand
+// array-valued vars).
+export function promptfooVars(c: GoldenCase): Record<string, unknown> {
+  return {
+    id: c.id,
+    category: c.category,
+    difficulty: c.difficulty,
+    expectedTier: c.expectedTier,
+    question: c.question,
+    candidateAnswer: c.candidateAnswer,
+    caseJson: JSON.stringify(c),
+  };
+}
+
 export type ScoringOutputParts = Partial<ScoringOutput>;
 
 export function uniformDimScores(n: number): Pick<

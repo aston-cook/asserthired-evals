@@ -9,9 +9,11 @@
   },
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "eval": "echo \"eval runner not implemented yet\" && exit 1",
-    "eval:summarize": "echo \"summarize-run not implemented yet\" && exit 1",
-    "eval:compare": "echo \"compare-runs not implemented yet\" && exit 1",
+    "eval": "tsx scripts/run-evals.ts",
+    "eval:smoke": "tsx scripts/run-evals.ts --smoke",
+    "eval:summarize": "tsx scripts/summarize-run.ts",
+    "eval:compare": "tsx scripts/compare-runs.ts",
+    "validate:dataset": "tsx scripts/validate-dataset.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@types/node": "^25.6.0",
     "promptfoo": "^0.121.5",
+    "tsx": "^4.20.6",
     "typescript": "^6.0.3",
     "vitest": "^4.1.4"
   }
