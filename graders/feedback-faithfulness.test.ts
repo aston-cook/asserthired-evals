@@ -144,6 +144,19 @@ describe('feedback-faithfulness', () => {
     expect(user).toContain(baseCase.candidateAnswer);
   });
 
+  it('gives the judge the interview question as shared context', async () => {
+    mockedJudge.mockResolvedValue({
+      text: '{"pass":true,"violations":[]}',
+      latencyMs: 100,
+    });
+    await feedbackFaithfulness({
+      output: makeScoringOutput({ technical_feedback: 'x' }),
+      test: { vars: baseCase },
+    });
+    const call = mockedJudge.mock.calls[0]?.[0];
+    expect(call?.user ?? '').toContain(baseCase.question);
+  });
+
   it('labels each section so the judge can attribute violations', async () => {
     mockedJudge.mockResolvedValue({
       text: '{"pass":true,"violations":[]}',

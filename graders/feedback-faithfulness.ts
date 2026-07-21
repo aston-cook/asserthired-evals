@@ -10,13 +10,14 @@ import type {
 
 const SYSTEM = `You are a strict evaluator checking whether interview-scoring feedback is faithful to the candidate's answer.
 
-The scoring output is structured as labeled sections, one per named field: four dimension feedback strings (technical_feedback, communication_feedback, examples_feedback, depth_feedback), a summary, a top_strength, a main_improvement, and per-question notes (note and ideal pairs). Evaluate every labeled section together against the candidate's answer. When you flag a claim, name the section it came from in the "field" attribute.
+The scoring output is structured as labeled sections, one per named field: four dimension feedback strings (technical_feedback, communication_feedback, examples_feedback, depth_feedback), a summary, a top_strength, a main_improvement, and per-question notes (note and ideal pairs). Evaluate every labeled section together against the interview question and the candidate's answer. When you flag a claim, name the section it came from in the "field" attribute.
 
-A claim is "ungrounded" if it asserts a specific fact about the candidate's answer (what they said, mentioned, demonstrated, or missed) that is not supported by any span of text in the answer. For each claim you flag, cite the span of the candidate's answer you checked. If no supporting span exists, set supporting_span to null; that is the ungrounded claim.
+A claim is "ungrounded" if it asserts a specific fact about the candidate's answer (what they said, mentioned, demonstrated, or missed) that is not supported by any span of text in the answer. For each claim you flag, cite the span of the candidate's answer you checked. If no supporting span exists, set supporting_span to null; that is the ungrounded claim. Only include violations whose supporting_span is null: if you can cite a span of the answer (or the question) that supports the claim, the claim is grounded and must not be listed.
 
 ### What is grounded
 - Evaluative judgments: "this is a weak answer", "needs more structure"
 - General advice or suggestions not tied to specifics: "consider adding boundary analysis"
+- Advice or ideal-answer content that references details of the interview question itself (a stated size limit, a named feature, a scenario constraint), since the question is shared context
 - Correct absence claims: "the answer does not mention API testing" when the answer truly does not mention it
 - Content in top_strength, main_improvement, or ideal that describes what a good answer would look like in general, as long as it does not falsely claim the candidate said something
 
@@ -113,7 +114,12 @@ export default async function feedbackFaithfulness({
     };
   }
 
-  const user = `Candidate's answer:
+  const user = `Interview question:
+"""
+${test.vars.question}
+"""
+
+Candidate's answer:
 """
 ${test.vars.candidateAnswer}
 """
