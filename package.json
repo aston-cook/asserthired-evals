@@ -5,9 +5,9 @@
   "description": "LLM evaluation suite for interview-scoring applications. Reference implementation.",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.22.0"
   },
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@9.15.9",
   "license": "MIT",
   "scripts": {
     "eval": "tsx scripts/run-evals.ts",
@@ -25,14 +25,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
-    "zod": "^4.3.6"
+    "@anthropic-ai/sdk": "^0.132.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
-    "promptfoo": "^0.121.5",
-    "tsx": "^4.20.6",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.4"
+    "@types/node": "^24.19.1",
+    "promptfoo": "^0.124.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
   }
 }

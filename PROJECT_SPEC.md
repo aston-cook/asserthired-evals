@@ -41,7 +41,7 @@ This is v1. Keep scope tight. Stretch ideas go in Section 12.
 - **Claude (Anthropic API)** both as the system under test and as the judge for LLM-graded assertions
 - **GitHub Actions** for CI
 - **Vitest** for unit tests around custom graders
-- **Node 20+**, pnpm
+- **Node 22.22+** (CI runs Node 24 LTS), pnpm
 
 Do not pull in Python or DeepEval for v1. Keep the toolchain unified.
 
