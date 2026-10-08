@@ -2,7 +2,7 @@
 
 [![evals](https://github.com/aston-cook/asserthired-evals/actions/workflows/evals.yml/badge.svg)](https://github.com/aston-cook/asserthired-evals/actions/workflows/evals.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
+![Node](https://img.shields.io/badge/node-%3E%3D22.22-brightgreen)
 
 A production-grade LLM evaluation suite for interview-scoring applications, built as a public reference implementation.
 
@@ -53,7 +53,7 @@ datasets/calibration/     ──►  scripts/calibrate-judge.ts ──► judge 
 
 ## Baseline run
 
-The baseline run (run 3 of 3 on 2026-07-21; the full three-run story is in [FINDINGS.md](FINDINGS.md)):
+The baseline run (run 3 of 3 on 2026-07-21, scored on `claude-sonnet-4-5` at temperature 0.2; the full three-run story is in [FINDINGS.md](FINDINGS.md)). The suite now scores on Claude Sonnet 5.5 (see [Models](#models)), so the first paid run on it sets a new baseline rather than a like-for-like comparison:
 
 | Metric | Result | Threshold | Status |
 |---|---|---|---|
@@ -97,7 +97,7 @@ The faithfulness judge is itself an LLM, so its verdicts need ground truth. [dat
 
 ## Running locally
 
-Cost warning: a full `pnpm eval` makes ~200 Anthropic API calls (65 scoring, 130 judge, plus 50 more with `--consistency`). With the default Haiku judge a run is roughly $1.50 to $2.50; with a Sonnet judge and the consistency sampler it measured about $2 to $3 per run. Everything under "Free" below makes zero API calls.
+Cost warning: a full `pnpm eval` makes ~200 Anthropic API calls (65 scoring, 130 judge, plus 50 more with `--consistency`). On the v1 model set (Sonnet 4.5 scoring, Haiku 4.5 judge) a run was roughly $1.50 to $2.50; with a Sonnet judge and the consistency sampler it measured about $2 to $3 per run. The Claude Sonnet 5.5 default has not been costed yet: its per-token price is a third lower than Sonnet 4.5, but it spends output tokens on adaptive thinking and its tokenizer counts about 30% more tokens for the same text, so budget for the same order of magnitude until the next paid run re-baselines it. Everything under "Free" below makes zero API calls.
 
 ```bash
 pnpm install
@@ -125,9 +125,21 @@ pnpm eval -- --consistency    # adds the 10x5 consistency sampler
 pnpm eval:redteam             # the 12-case adversarial suite
 pnpm calibrate:judge -- --yes # measure the faithfulness judge's precision and recall
 ANTHROPIC_JUDGE_MODEL=claude-sonnet-4-5 pnpm eval   # reproduce the baseline judge
+ANTHROPIC_JUDGE_MODEL=claude-haiku-5-5 pnpm calibrate:judge -- --yes   # vet the cheaper judge
 ```
 
 CI is deliberately conservative about cost: pushes and PRs run only the free tier (typecheck, unit tests, dataset validation, both mock smoke runs). The paid eval job runs **only** on manual workflow dispatch with a typed YES confirmation, so nothing triggers API spend accidentally. See [.github/workflows/evals.yml](.github/workflows/evals.yml).
+
+### Models
+
+| Role | Default | Override |
+|---|---|---|
+| Scoring (system under test) | `claude-sonnet-5-5`, adaptive thinking at `medium` effort | edit the provider block in `promptfooconfig.yaml` (the consistency sampler also reads `EVAL_SCORING_MODEL`) |
+| LLM judges (faithfulness, safety) | `claude-haiku-4-5` | `ANTHROPIC_JUDGE_MODEL` |
+
+All model ids and per-model request rules live in [lib/models.ts](lib/models.ts), and a unit test fails if the promptfoo provider blocks drift from it. The Claude 5 models reject a non-default `temperature`, so the request builder drops it for them and keeps it for the 4.x models used by the v1 baselines.
+
+The judge stays on Haiku 4.5 on purpose: every v1 faithfulness and safety number, and the judge calibration, was measured on a 4.x judge, and moving the judge moves every judged metric at once. Claude Haiku 5.5 is the cheaper candidate (a tenth of Haiku 4.5's per-token price); switch only after `ANTHROPIC_JUDGE_MODEL=claude-haiku-5-5 pnpm calibrate:judge -- --yes` shows precision and recall holding.
 
 ## Repo layout
 
@@ -149,12 +161,13 @@ Built beyond the original v1 metrics: the red-team suite, drift detection, the d
 
 Still on the roadmap:
 
-- Multi-model comparison (Haiku vs Sonnet vs Opus) to quantify the cost-quality frontier for this workload. This is the one remaining item that only pays off with paid runs across several models, so it waits until a comparison run is worth the spend.
+- Multi-model comparison (Haiku 5.5 vs Sonnet 5.5 vs Opus 5.5, plus an effort sweep on the scoring model) to quantify the cost-quality frontier for this workload. This is the one remaining item that only pays off with paid runs across several models, so it waits until a comparison run is worth the spend.
+- Move the judge to Claude Haiku 5.5 once a calibration run validates it (see Models above).
 - Prompt caching on the judge system prompts, the last untapped cost lever (see [IDEAS.md](IDEAS.md)).
 
 ## Changelog
 
-Recent work is called out in [CHANGELOG.md](CHANGELOG.md). The red-team suite, drift detection, review queue, and judge calibration landed in 1.1.0.
+Recent work is called out in [CHANGELOG.md](CHANGELOG.md). The red-team suite, drift detection, review queue, and judge calibration landed in 1.1.0; the move to Claude Sonnet 5.5 scoring and the toolchain refresh landed in 1.2.0.
 
 ## Credits
 

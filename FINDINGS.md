@@ -63,6 +63,14 @@ Three full runs plus probes cost about $6.50 in one afternoon on `claude-sonnet-
 - The consistency sampler is opt-in (`--consistency`), justified by Finding 1
 - CI runs the paid eval **only** on manual dispatch with a typed YES confirmation; pushes, PRs, and schedules trigger nothing that costs money
 
+## Model migration postscript (2026-10-07)
+
+Every number above was measured on `claude-sonnet-4-5` at temperature 0.2. The suite now scores on `claude-sonnet-5-5` with adaptive thinking at medium effort, and that changes what the findings can be compared against:
+
+- **Temperature is gone.** Claude 5 models reject a non-default `temperature`, so the 0.2 setting behind Finding 1 no longer exists. The near-zero variance it measured belongs to the old model and setting; the consistency sampler needs one fresh `--consistency` run before its budget means anything again.
+- **The next paid run is a new baseline.** A different model, a thinking budget, and a tokenizer that counts about 30% more tokens all move score-in-range, must-mention, latency, and cost at once. The drift tool will flag that run, correctly, because the config changed. Compare runs on the same model only.
+- **The judge did not move.** Faithfulness and safety still grade on `claude-haiku-4-5`, so those two metrics isolate the scoring-model change. Claude Haiku 5.5 is the next judge cost lever, but only after `pnpm calibrate:judge` shows its precision and recall holding against the labeled set.
+
 ## What I would do differently starting again
 
 - Author expected ranges *after* a small calibration run, not before. Ten minutes of API spend would have saved the biggest rework of the project. The dataset's job is to freeze observed-and-accepted behavior, not to legislate ideal behavior.
