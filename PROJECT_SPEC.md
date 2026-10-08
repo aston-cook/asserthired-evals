@@ -195,10 +195,15 @@ prompts:
   - file://prompts/scoring-prompt.v1.txt
 
 providers:
-  - id: anthropic:messages:claude-sonnet-4-5
+  # v1 shipped on claude-sonnet-4-5 at temperature 0.2. Since 2026-10-07 the
+  # suite scores on claude-sonnet-5-5, which rejects temperature; see
+  # lib/models.ts for the current request shape.
+  - id: anthropic:messages:claude-sonnet-5-5
     config:
-      temperature: 0.2
-      max_tokens: 2000
+      thinking:
+        type: adaptive
+      effort: medium
+      max_tokens: 6000
 
 tests:
   - description: "Manual Testing golden set"

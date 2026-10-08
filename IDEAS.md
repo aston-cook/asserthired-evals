@@ -59,6 +59,10 @@ Worth watching once real runs start. Options if cost becomes a concern:
 
 Update 2026-07-21: cost became a concern on day one. Three full runs measured about $6.50 total with a Sonnet judge. Responses: judge default switched to claude-haiku-4-5 (baselines used Sonnet via ANTHROPIC_JUDGE_MODEL), consistency sampler made opt-in (measured stddev 0.09 to 0.31 against a budget of 8, so it earns its 50 calls rarely), and the CI eval job is manual-dispatch-only with a typed YES confirmation. Remaining lever if needed: prompt caching on the judge system prompts.
 
+Update 2026-10-07: scoring moved to claude-sonnet-5-5 (adaptive thinking, medium effort); the judge stays on claude-haiku-4-5 for comparability. Claude Haiku 5.5 is the next judge lever at a tenth of Haiku 4.5's per-token price, gated on a `pnpm calibrate:judge` run with `ANTHROPIC_JUDGE_MODEL=claude-haiku-5-5`. It thinks by default, so the client sends it `low` effort with thinking headroom on max_tokens.
+
+Known gap, pre-existing since v1: the per-case latency grader never receives a measurement from the real Anthropic provider (every v1 case reported "No latency measurement available"), because promptfoo's JavaScript assertion context carries no latency and its Anthropic provider does not set `providerResponse.latencyMs`. Suite percentiles are unaffected; they come from promptfoo's own per-result latency. Fixing the per-case signal needs a thin provider wrapper that times the call itself.
+
 ## Golden dataset authoring rules
 
 Patterns established while authoring the seed cases. Apply to every new case.
