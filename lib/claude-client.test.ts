@@ -14,7 +14,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }));
 
-import { judge, __resetClientForTests } from './claude-client.js';
+import { judge, ModelRefusalError, __resetClientForTests } from './claude-client.js';
 
 function apiError(status: number, message = 'simulated'): Error {
   return Object.assign(new Error(message), { status });
@@ -145,5 +145,72 @@ describe('claude-client', () => {
     await judge({ system: 's', user: 'u', model: 'claude-opus-4-7' });
     const payload = mockCreate.mock.calls[0]?.[0];
     expect(payload).toMatchObject({ model: 'claude-opus-4-7' });
+  });
+
+  it('reads the answer from text blocks when a thinking block comes first', async () => {
+    mockCreate.mockResolvedValue({
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'thinking', thinking: '', signature: 'sig' },
+        { type: 'text', text: '{"pass": true,' },
+        { type: 'text', text: ' "violations": []}' },
+      ],
+    });
+    const result = await judge({ system: 's', user: 'u', model: 'claude-haiku-5-5' });
+    expect(result.text).toBe('{"pass": true, "violations": []}');
+  });
+
+  it('throws ModelRefusalError on a refusal instead of returning empty text', async () => {
+    mockCreate.mockResolvedValue({
+      stop_reason: 'refusal',
+      stop_details: { type: 'refusal', category: 'cyber', explanation: null },
+      content: [],
+    });
+    const err = await judge({ system: 's', user: 'u', model: 'claude-sonnet-5-5' }).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(ModelRefusalError);
+    expect(err).toMatchObject({ model: 'claude-sonnet-5-5', category: 'cyber' });
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends adaptive thinking, effort, and headroom (no temperature) to Claude 5.5 models', async () => {
+    mockCreate.mockResolvedValue(okResponse());
+    await judge({
+      system: 's',
+      user: 'u',
+      model: 'claude-sonnet-5-5',
+      maxTokens: 2000,
+      effort: 'medium',
+      temperature: 0.2,
+    });
+    const payload = mockCreate.mock.calls[0]?.[0];
+    expect(payload).toMatchObject({
+      max_tokens: 6000,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'medium' },
+    });
+    expect(payload).not.toHaveProperty('temperature');
+  });
+
+  it('defaults the judge to low effort on an adaptive judge model', async () => {
+    process.env['ANTHROPIC_JUDGE_MODEL'] = 'claude-haiku-5-5';
+    mockCreate.mockResolvedValue(okResponse());
+    await judge({ system: 's', user: 'u' });
+    const payload = mockCreate.mock.calls[0]?.[0];
+    expect(payload).toMatchObject({
+      model: 'claude-haiku-5-5',
+      max_tokens: 1024 + 2000,
+      output_config: { effort: 'low' },
+    });
+  });
+
+  it('keeps temperature and no thinking params for legacy models', async () => {
+    mockCreate.mockResolvedValue(okResponse());
+    await judge({ system: 's', user: 'u', model: 'claude-sonnet-4-5', temperature: 0.2 });
+    const payload = mockCreate.mock.calls[0]?.[0];
+    expect(payload).toMatchObject({ model: 'claude-sonnet-4-5', max_tokens: 1024, temperature: 0.2 });
+    expect(payload).not.toHaveProperty('thinking');
+    expect(payload).not.toHaveProperty('output_config');
   });
 });

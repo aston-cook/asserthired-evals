@@ -12,7 +12,13 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { judge } from '../lib/claude-client.js';
+import { judge, ModelRefusalError } from '../lib/claude-client.js';
+import {
+  BASELINE_SCORING_TEMPERATURE,
+  SCORING_ANSWER_TOKENS,
+  SCORING_EFFORT,
+  SCORING_MODEL,
+} from '../lib/models.js';
 import { computeOverallScore, ScoringOutputSchema } from '../lib/types.js';
 import { extractJson } from '../lib/json.js';
 import { buildScoringMessages } from '../lib/scoring-messages.js';
@@ -26,8 +32,6 @@ import { summarize } from './summarize-run.js';
 const CONSISTENCY_SAMPLE_SIZE = 10;
 const CONSISTENCY_RUNS_PER_CASE = 5;
 const CONSISTENCY_CONCURRENCY = 4;
-const SCORING_TEMPERATURE = 0.2;
-const SCORING_MAX_TOKENS = 2000;
 
 interface CliOptions {
   smoke: boolean;
@@ -66,8 +70,10 @@ function loadDotEnv(root: string): void {
   }
 }
 
+// Overrides the consistency sampler only. The promptfoo pass takes its model
+// from the provider block in the promptfoo config.
 function scoringModel(): string {
-  return process.env['EVAL_SCORING_MODEL'] ?? 'claude-sonnet-4-5';
+  return process.env['EVAL_SCORING_MODEL'] ?? SCORING_MODEL;
 }
 
 async function runPool<T>(
@@ -104,15 +110,25 @@ function sampleConsistencyCases(cases: GoldenCase[]): GoldenCase[] {
   return sampled;
 }
 
-async function scoreOnce(c: GoldenCase): Promise<number | null> {
+// Same request shape as the promptfoo provider block. The temperature only
+// reaches legacy models (EVAL_SCORING_MODEL=claude-sonnet-4-5 reproduces the
+// v1 baselines); adaptive models reject it, so requestShape drops it.
+async function scoreOnce(c: GoldenCase): Promise<number | 'refused' | null> {
   const { system, user } = buildScoringMessages(c);
-  const { text } = await judge({
-    system,
-    user,
-    model: scoringModel(),
-    maxTokens: SCORING_MAX_TOKENS,
-    temperature: SCORING_TEMPERATURE,
-  });
+  let text: string;
+  try {
+    ({ text } = await judge({
+      system,
+      user,
+      model: scoringModel(),
+      maxTokens: SCORING_ANSWER_TOKENS,
+      effort: SCORING_EFFORT,
+      temperature: BASELINE_SCORING_TEMPERATURE,
+    }));
+  } catch (err) {
+    if (err instanceof ModelRefusalError) return 'refused';
+    throw err;
+  }
   const parsed = ScoringOutputSchema.safeParse(extractJson(text));
   if (!parsed.success) return null;
   return computeOverallScore(parsed.data);
@@ -124,7 +140,7 @@ async function runConsistency(): Promise<ConsistencyData> {
     `\nConsistency sampler: ${sampled.length} cases x ${CONSISTENCY_RUNS_PER_CASE} runs on ${scoringModel()}`,
   );
 
-  const tasks: Array<() => Promise<{ id: string; score: number | null }>> = [];
+  const tasks: Array<() => Promise<{ id: string; score: number | 'refused' | null }>> = [];
   for (const c of sampled) {
     for (let run = 0; run < CONSISTENCY_RUNS_PER_CASE; run++) {
       tasks.push(async () => ({ id: c.id, score: await scoreOnce(c) }));
@@ -134,9 +150,14 @@ async function runConsistency(): Promise<ConsistencyData> {
   const outcomes = await runPool(tasks, CONSISTENCY_CONCURRENCY);
   const byCase = new Map<string, number[]>();
   let parseFailures = 0;
+  let refusals = 0;
   for (const { id, score } of outcomes) {
     if (score === null) {
       parseFailures += 1;
+      continue;
+    }
+    if (score === 'refused') {
+      refusals += 1;
       continue;
     }
     const list = byCase.get(id) ?? [];
@@ -146,6 +167,11 @@ async function runConsistency(): Promise<ConsistencyData> {
   if (parseFailures > 0) {
     console.warn(
       `Consistency sampler: ${parseFailures} response(s) failed schema parsing and were excluded`,
+    );
+  }
+  if (refusals > 0) {
+    console.warn(
+      `Consistency sampler: ${refusals} request(s) were declined by the model's safety classifiers and were excluded`,
     );
   }
 
@@ -176,15 +202,23 @@ function runPromptfoo(configPath: string, rawPath: string, first?: number): void
     args.push('--filter-first-n', String(first));
   }
   console.log(`Running: pnpm ${args.join(' ')}\n`);
-  const result = spawnSync('pnpm', args, {
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
+  const spawnOptions = {
+    stdio: 'inherit' as const,
     env: {
       ...process.env,
       PROMPTFOO_DISABLE_TELEMETRY: '1',
       PROMPTFOO_DISABLE_UPDATE: '1',
     },
-  });
+  };
+  // pnpm is a .cmd shim on Windows, which Node only spawns through a shell.
+  // Passing an args array alongside shell: true is deprecated (DEP0190), so the
+  // Windows path builds one command string. The command name stays unquoted:
+  // quoting it breaks the shim's %~dp0 lookup of its own directory.
+  const quote = (a: string): string => (/[\s"&|<>^]/.test(a) ? `"${a}"` : a);
+  const result =
+    process.platform === 'win32'
+      ? spawnSync(['pnpm', ...args.map(quote)].join(' '), { ...spawnOptions, shell: true })
+      : spawnSync('pnpm', args, spawnOptions);
   // promptfoo exits 100 when assertions fail; thresholds are enforced by the
   // summarizer. Its logger can also crash the process on Windows after the
   // output file is already written, so any exit code is tolerated as long as

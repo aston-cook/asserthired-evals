@@ -1,7 +1,8 @@
 # AssertHired interview scoring eval suite v1.
 # System under test: the sanitized scoring prompt snapshot against the Anthropic API.
-# Run through `pnpm eval` (scripts/run-evals.ts), which also runs the consistency
-# sampler and the report generator. Requires ANTHROPIC_API_KEY.
+# Run through `pnpm eval` (scripts/run-evals.ts), which also runs the report
+# generator, and the consistency sampler with --consistency. Requires
+# ANTHROPIC_API_KEY.
 
 description: "AssertHired interview scoring eval suite v1"
 
@@ -9,10 +10,17 @@ prompts:
   - file://prompts/scoring-prompt.promptfoo.ts
 
 providers:
-  - id: anthropic:messages:claude-sonnet-4-5
+  - id: anthropic:messages:claude-sonnet-5-5
     config:
-      temperature: 0.2
-      max_tokens: 2000
+      # Adaptive thinking at medium effort. Sonnet 5.5 rejects temperature, so
+      # the v1 setting (0.2 on claude-sonnet-4-5) is gone. max_tokens is the
+      # 2000-token answer budget plus 4000 of thinking headroom. These values
+      # mirror lib/models.ts, and lib/models.test.ts fails if they drift.
+      thinking:
+        type: adaptive
+      effort: medium
+      max_tokens: 6000
+      showThinking: false
 
 defaultTest:
   assert:

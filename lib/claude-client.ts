@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { JUDGE_EFFORT, JUDGE_MODEL, requestShape } from './models.js';
+import type { Effort } from './models.js';
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000;
@@ -16,11 +18,24 @@ function getClient(): Anthropic {
   return cachedClient;
 }
 
-// Haiku keeps judge costs low (roughly 3x cheaper on input, 3x on output than
-// Sonnet). The initial baseline runs on 2026-07-21 used claude-sonnet-4-5 as
-// the judge; set ANTHROPIC_JUDGE_MODEL=claude-sonnet-4-5 to reproduce them.
+// See JUDGE_MODEL in lib/models.ts for why the judge stays on Haiku 4.5. The
+// initial baseline runs on 2026-07-21 used claude-sonnet-4-5 as the judge; set
+// ANTHROPIC_JUDGE_MODEL=claude-sonnet-4-5 to reproduce them.
 export function defaultModel(): string {
-  return process.env['ANTHROPIC_JUDGE_MODEL'] ?? 'claude-haiku-4-5';
+  return process.env['ANTHROPIC_JUDGE_MODEL'] ?? JUDGE_MODEL;
+}
+
+// Raised when the model's safety classifiers decline the request. The API
+// returns HTTP 200 with stop_reason "refusal", so without this check the caller
+// would see an empty string and report it as malformed JSON.
+export class ModelRefusalError extends Error {
+  constructor(
+    public readonly model: string,
+    public readonly category: string | null,
+  ) {
+    super(`${model} refused the request${category ? ` (${category})` : ''}`);
+    this.name = 'ModelRefusalError';
+  }
 }
 
 function isRetryable(err: unknown): boolean {
@@ -40,8 +55,12 @@ export interface JudgeCallInput {
   system: string;
   user: string;
   model?: string;
+  // Answer budget. Adaptive-thinking models get thinking headroom on top.
   maxTokens?: number;
+  // Sent to legacy models only; adaptive models reject non-default values.
   temperature?: number;
+  // Thinking effort on adaptive models; ignored by legacy models.
+  effort?: Effort;
 }
 
 export interface JudgeCallOutput {
@@ -55,9 +74,11 @@ export async function judge({
   model,
   maxTokens = 1024,
   temperature,
+  effort = JUDGE_EFFORT,
 }: JudgeCallInput): Promise<JudgeCallOutput> {
   const client = getClient();
   const selectedModel = model ?? defaultModel();
+  const shape = requestShape(selectedModel, { answerTokens: maxTokens, effort, temperature });
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -66,17 +87,24 @@ export async function judge({
       const response = await client.messages.create(
         {
           model: selectedModel,
-          max_tokens: maxTokens,
           system,
           messages: [{ role: 'user', content: user }],
-          ...(temperature !== undefined ? { temperature } : {}),
+          ...shape,
         },
         { timeout: TIMEOUT_MS },
       );
       const latencyMs = performance.now() - start;
 
-      const firstBlock = response.content[0];
-      const text = firstBlock && firstBlock.type === 'text' ? firstBlock.text : '';
+      if (response.stop_reason === 'refusal') {
+        throw new ModelRefusalError(selectedModel, response.stop_details?.category ?? null);
+      }
+
+      // Read blocks by type: on adaptive-thinking models the first block is
+      // usually a thinking block, not the answer.
+      const text = response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map((block) => block.text)
+        .join('');
 
       return { text, latencyMs };
     } catch (err) {
