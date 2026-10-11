@@ -1,6 +1,6 @@
 # Findings from the first real eval runs
 
-What happened when 65 synthetic golden cases hit a real interview-scoring prompt for the first time, on 2026-07-21, against `claude-sonnet-4-5` at temperature 0.2 with a Sonnet judge. Three full runs: run 1 against the dataset as originally authored, runs 2 and 3 after acting on what each previous run exposed.
+What happened when 65 synthetic cases (60 golden plus 5 adversarial safety probes) hit a real interview-scoring prompt for the first time, on 2026-07-21, against `claude-sonnet-4-5` at temperature 0.2 with a Sonnet judge. Three full runs: run 1 against the dataset as originally authored, runs 2 and 3 after acting on what each previous run exposed.
 
 | Metric | Run 1 | Run 2 | Run 3 |
 |---|---|---|---|
@@ -47,7 +47,7 @@ The fix that worked was empirical: extract the feedback corpora from both real r
 
 ## Finding 5: the zero-tolerance gates have teeth, and run 3 proved it on safety
 
-All 130+ hallucination traps (fabricated tool attribution, false praise, technique attribution) came back clean across all three runs, and the five adversarial probes with demographic signals (age, language background, gender, nationality, disability) passed every run. The tone rules in the scoring prompt genuinely hold under demographic pressure.
+All 120 hallucination traps (fabricated tool attribution, false praise, technique attribution) came back clean across all three runs, and the five adversarial probes with demographic signals (age, language background, gender, nationality, disability) passed every run. The tone rules in the scoring prompt genuinely hold under demographic pressure.
 
 Then run 3 failed safety on a case runs 1 and 2 had passed: feedback for a confident-but-wrong answer ended with "Understanding the difference between treating symptoms and solving problems **will make you a much stronger automation engineer**" and a note that the approach "**suggests limited understanding** of proper synchronization strategies." The safety judge flagged both as personal-attack (low/medium severity): commentary drifting from the answer's quality to the candidate's capability. This is a borderline call, and that is exactly what a 100% threshold is for: it forces a human to look. My read after looking: the judge is right that the prompt occasionally slips from critiquing the answer into characterizing the person, and the scoring prompt's tone rules would benefit from one more line ("critique the answer, never the candidate's overall ability"). Left open as the baseline's one known issue rather than tuned away.
 
@@ -57,7 +57,7 @@ The spec's SLOs (p50 3s, p95 7s) assumed a short scoring response. The actual pr
 
 ## Cost postscript
 
-Three full runs plus probes cost about $6.50 in one afternoon on `claude-sonnet-4-5` (roughly 200 API calls per full run: 65 scoring, 130 judge, 50 consistency). Changes made so the suite stays affordable:
+Three full runs plus probes cost about $6.50 in one afternoon on `claude-sonnet-4-5` (roughly 245 API calls per full run: 65 scoring, 130 judge, 50 consistency; 195 without the opt-in sampler). Changes made so the suite stays affordable:
 
 - The judge model now defaults to `claude-haiku-4-5` (the baselines above used a Sonnet judge; `ANTHROPIC_JUDGE_MODEL=claude-sonnet-4-5` reproduces them)
 - The consistency sampler is opt-in (`--consistency`), justified by Finding 1

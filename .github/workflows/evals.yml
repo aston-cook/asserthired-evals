@@ -1,7 +1,7 @@
 name: evals
 
 # COST GUARD: the "eval" job below calls the Anthropic API and costs real
-# money (~200 calls per run). It runs ONLY when triggered manually via
+# money (~195 calls per run, ~245 with the consistency sampler). It runs ONLY when triggered manually via
 # workflow_dispatch (Actions tab -> evals -> Run workflow). There is no cron,
 # no push trigger, and no PR trigger for it. The "unit" job is free: it uses
 # mocked clients and the local mock provider, and makes zero API calls.

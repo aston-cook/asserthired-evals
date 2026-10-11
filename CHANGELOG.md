@@ -54,8 +54,8 @@ Initial release.
 
 ### Added
 
-- 65-case fully synthetic golden dataset across manual testing, automation, and API testing, plus 5 adversarial safety probes, validated against a zod schema.
-- Seven metrics with CI thresholds: score-in-range, score consistency, feedback faithfulness, must-mention coverage, must-not-mention, safety, and latency.
+- 60-case fully synthetic golden dataset across manual testing, automation, and API testing, plus 5 adversarial safety probes (65 cases in all), validated against a zod schema.
+- Seven metrics (six graders plus the consistency sampler) with CI thresholds: score-in-range, score consistency, feedback faithfulness, must-mention coverage, must-not-mention, safety, and latency.
 - LLM-as-judge graders for faithfulness and safety, with strict rubrics and citation requirements.
 - Promptfoo pipeline with a zero-API mock smoke mode, plus a report pipeline with threshold gates and a trend view.
 - GitHub Actions CI: free checks (typecheck, unit tests, dataset validation, mock smoke) on every push and pull request; the paid eval runs only on manual dispatch with a typed confirmation.

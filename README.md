@@ -16,7 +16,7 @@ Every run produces a threshold-gated markdown report and a machine-readable summ
 
 ![Promptfoo results overview: 87.69% passing, per-case scores, cost and latency](docs/images/promptfoo-results.png)
 
-Each case is graded by all seven metrics independently, with a human-readable reason for every pass or fail:
+Each case is graded independently by six graders (the seventh metric, score consistency, is a separate opt-in sampler), with a human-readable reason for every pass or fail:
 
 ![Per-case grader breakdown: score-in-range, must-mention, must-not-mention, latency, faithfulness, safety](docs/images/promptfoo-detail.png)
 
@@ -34,7 +34,7 @@ reports/<ts>-summary.json ──►  scripts/{compare,detect-drift,flag-for-revi
 datasets/calibration/     ──►  scripts/calibrate-judge.ts ──► judge precision and recall
 ```
 
-- **Dataset**: 65 fully synthetic evaluation cases across manual testing, automation, and API testing, plus a 12-case adversarial red-team suite. Each case carries an expected score range, must-mention concepts, and hallucination traps. Validated against a zod schema.
+- **Dataset**: 60 fully synthetic golden cases across manual testing, automation, and API testing, plus 5 adversarial safety probes (65 cases in all), and a 12-case adversarial red-team suite. Each case carries an expected score range, must-mention concepts, and hallucination traps. Validated against a zod schema.
 - **System under test**: a sanitized snapshot of an interview-scoring prompt ([prompts/scoring-prompt.v1.txt](prompts/scoring-prompt.v1.txt)), run against the Anthropic API through promptfoo.
 - **Graders**: TypeScript assertions shared between promptfoo and unit tests. The two judge graders call Claude with strict rubrics and citation requirements.
 - **Reports and analysis**: every run emits a markdown report and a machine-readable summary; trend, drift, and review-queue scripts turn a history of summaries into decisions.
@@ -97,7 +97,7 @@ The faithfulness judge is itself an LLM, so its verdicts need ground truth. [dat
 
 ## Running locally
 
-Cost warning: a full `pnpm eval` makes ~200 Anthropic API calls (65 scoring, 130 judge, plus 50 more with `--consistency`). On the v1 model set (Sonnet 4.5 scoring, Haiku 4.5 judge) a run was roughly $1.50 to $2.50; with a Sonnet judge and the consistency sampler it measured about $2 to $3 per run. The Claude Sonnet 5.5 default has not been costed yet: its per-token price is a third lower than Sonnet 4.5, but it spends output tokens on adaptive thinking and its tokenizer counts about 30% more tokens for the same text, so budget for the same order of magnitude until the next paid run re-baselines it. Everything under "Free" below makes zero API calls.
+Cost warning: a full `pnpm eval` makes ~195 Anthropic API calls (65 scoring, 130 judge), or ~245 with `--consistency` (50 more). On the v1 model set (Sonnet 4.5 scoring, Haiku 4.5 judge) a run was roughly $1.50 to $2.50; with a Sonnet judge and the consistency sampler it measured about $2 to $3 per run. The Claude Sonnet 5.5 default has not been costed yet: its per-token price is a third lower than Sonnet 4.5, but it spends output tokens on adaptive thinking and its tokenizer counts about 30% more tokens for the same text, so budget for the same order of magnitude until the next paid run re-baselines it. Everything under "Free" below makes zero API calls.
 
 ```bash
 pnpm install
